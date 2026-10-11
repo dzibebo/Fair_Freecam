@@ -2,111 +2,43 @@ name: Build
 
 on:
   push:
-    branches-ignore:
-      - 'release/**'
+    branches:
+      - main
+      - 'upstream/**'
   pull_request:
 
-# Group workflow runs by event and ref.
-# New runs cancel any pending run.
-# PR runs also cancel in-progress runs.
 concurrency:
   group: build-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name != 'push' }}
+  cancel-in-progress: true
 
-permissions: {}
+permissions:
+  contents: read
 
 defaults:
   run:
     shell: bash
 
 jobs:
-  prepare:
-    name: Setup
-    uses: ./.github/workflows/prepare.yaml
-    permissions:
-      contents: read
-    with:
-      changelog: ${{ github.event_name != 'push' }}
-      release: ${{ github.event_name != 'push' || github.ref == 'refs/heads/main' }}
-      matrix: true
-
   build:
-    name: ${{ matrix.name }}
+    name: Build Mods
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
-    needs: prepare
-    strategy:
-      fail-fast: false
-      matrix:
-        include: ${{ fromJson(needs.prepare.outputs.matrix) }}
-    timeout-minutes: 120
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v7
 
-      # Install Java used by the Gradle wrapper.
-      # The JVM used to build is installed separately by the foojay resolver.
       - uses: actions/setup-java@v5
         with:
-          java-version: '21'
+          java-version: '25'
           distribution: temurin
+
       - uses: gradle/actions/setup-gradle@v6
 
-      - name: Run gradle
-        env:
-          args: ${{ toJSON(matrix.gradle_args) }}
-        run: |
-          # Build each task
-          mapfile -t args < <( echo "$args" | jq --raw-output .[] )
-          ./gradlew "${args[@]}"
+      - name: Build with Gradle
+        run: ./gradlew chiseledBuild
 
-      - name: Upload build
-        if: matrix.upload
-        id: upload
+      - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ matrix.upload.name }}
-          path: ${{ matrix.upload.path }}
-          archive: ${{ matrix.upload.archive }}
-          retention-days: ${{ matrix.upload.days }}
-          if-no-files-found: error
-
-      - name: Upload summary
-        if: ${{ steps.upload.outputs.artifact-url }}
-        shell: bash
-        env:
-          upload_name: ${{ matrix.upload.name }}
-          upload_path: ${{ matrix.upload.path }}
-          upload_days: ${{ matrix.upload.days }}
-          upload_archive: ${{ matrix.upload.archive }}
-          upload_url: ${{ steps.upload.outputs.artifact-url }}
-        run: |
-          (
-            shopt -s nullglob
-            files=( $upload_path )
-
-            echo "## Build artifacts"
-            echo
-
-            # `upload_archive` allows multiple files with an `upload_name`
-            if [ "$upload_archive" = "true" ]; then
-              echo "**Files:**"
-              echo
-              for file in "${files[@]}"; do
-                echo "- \`$(basename "$file")\`"
-              done
-              echo
-              echo "**Download:** [\`$upload_name.zip\`]($upload_url)"
-            elif [ ${#files[@]} = 1 ]; then
-              echo "**Download:** [\`$(basename "${files[0]}")\`]($upload_url)"
-            else
-              >&2 echo "::error::Expected one upload file, found ${#files[@]}"
-              exit 1
-            fi
-
-            echo
-            echo "_Expires on **$(date --utc --date=+"$upload_days"days +%F)** (UTC)._"
-            echo
-          ) >> "$GITHUB_STEP_SUMMARY"
+          name: fair-freecam-jars
+          path: artifacts/
