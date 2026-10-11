@@ -2,16 +2,12 @@ package net.xolt.freecam.mixins;
 
 import net.minecraft.client.Camera;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.level.material.FogType;
-import net.xolt.freecam.Freecam;
-import net.xolt.freecam.config.ModConfig;
 import net.xolt.freecam.util.FreeCamera;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 //? if <1.21.11 {
 /*import net.minecraft.world.level.BlockGetter;
 *///? } else if <26.1
@@ -49,13 +45,5 @@ public class CameraMixin {
         }
     }
     *///? }
-
-    // In Fair Freecam, preserves normal blue water fog and appearance.
-    // Removes the submersion overlay only for lava or powdered snow if configured.
-    @Inject(method = "getFluidInCamera", at = @At("RETURN"), cancellable = true)
-    public void onGetSubmersionType(CallbackInfoReturnable<FogType> cir) {
-        if (Freecam.isEnabled() && ModConfig.get().shouldHideSubmersionFog() && cir.getReturnValue() != FogType.WATER) {
-            cir.setReturnValue(FogType.NONE);
-        }
-    }
 }
+

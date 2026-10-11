@@ -212,14 +212,6 @@ public class ModConfigScreenFactory {
                 .setSaveConsumer(value -> config().visual.fullBright = value)
                 .build();
 
-        BooleanListEntry showSubmersion = entryBuilder.startBooleanToggle(
-                        Component.translatable("freecam.config.visual.showSubmersionFog.label"),
-                        config().visual.showSubmersion)
-                .setTooltip(Component.translatable("freecam.config.visual.showSubmersionFog.tooltip"))
-                .setDefaultValue(defaults().visual.showSubmersion)
-                .setSaveConsumer(value -> config().visual.showSubmersion = value)
-                .build();
-
         // Add entries to the sub-category
         Stream.of(
                 perspective,
@@ -227,8 +219,7 @@ public class ModConfigScreenFactory {
                 //? if >=1.21.11
                 outlinePlayer,
                 showHand,
-                fullBright,
-                showSubmersion
+                fullBright
         ).forEach(builder::add);
 
         return builder.build();

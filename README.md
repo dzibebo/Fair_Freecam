@@ -55,7 +55,6 @@ See the [contributing guide](https://github.com/MinecraftFreecam/Freecam/blob/ma
 | Show Player         | Shows your player in its original position.                                                                                                                                                                                                         | `true`        |
 | Show Hand           | Whether you can see your hand in freecam.                                                                                                                                                                                                           | `false`       |
 | Full Brightness     | Increases brightness while in freecam.                                                                                                                                                                                                              | `false`       |
-| Show Submersion Fog | Whether you see a fog overlay underwater, in lava, or powdered snow.                                                                                                                                                                                | `true`        |
 
 ## Utility Options
 
