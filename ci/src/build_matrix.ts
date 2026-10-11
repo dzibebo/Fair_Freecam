@@ -26,6 +26,7 @@ export function main(args: CliOptions) {
     SCProjectsByVersionSchema.parse(versionsToml.versions),
   );
 
+
   const staticJobs = matrixJobsToml
     ? MatrixJobsFileSchema.parse(matrixJobsToml).builds
     : [];
@@ -53,7 +54,7 @@ export function buildVersionMatrix(
   version: string,
   versions: SCProjectsByVersion,
 ): MatrixJob[] {
-  const loaders = ["fabric", "forge", "neoforge"];
+  const loaders = ["fabric"];
   const matrix: MatrixJob[] = [];
 
   for (const [key, branches] of Object.entries(versions)) {
@@ -79,6 +80,7 @@ export function buildVersionMatrix(
 
   return matrix;
 }
+
 
 if (import.meta.main) {
   await run(app, process.argv.slice(2), { process: process as StricliProcess });

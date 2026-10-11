@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import { CHANGELOG_FILE } from "./project_files.ts";
-import { readVersion, MetadataError } from "./read_version.ts";
 
 export class LintError extends Error {
   constructor(message: string) {
@@ -11,21 +10,17 @@ export class LintError extends Error {
 }
 
 type ParseResult = {
-  unreleasedLine: boolean;
+  unreleasedLine: number | null;
   releases: Map<string, number>;
-  oldFormatReleases: Set<string>;
   footerLinks: Set<string>;
 };
 
 function parseChangelog(text: string): ParseResult {
-  let unreleasedLine: boolean = false;
+  let unreleasedLine: number | null = null;
   const releases = new Map<string, number>();
-  const oldFormatReleases = new Set<string>();
   const footerLinks = new Set<string>();
 
-  const headerRe = /^## (?<name>[-.0-9a-zA-Z]+) \((?<date>\d{4}-\d\d-\d\d)\)$/;
-  const oldHeaderRe = /^## \[(?<name>[^\]]+)]/;
-  const unreleasedRe = /^## \[?unreleased\]?/i;
+  const headerRe = /^## \[(?<name>[^\]]+)]/;
   const footerRe = /^\[(?<name>[^\]]+)]:/;
 
   const lines = text.split("\n");
@@ -34,18 +29,15 @@ function parseChangelog(text: string): ParseResult {
     const line = raw.replace(/\r$/, ""); // mimic rstrip for CRLF detection
     const lineNo = idx + 1;
 
-    if (line.match(unreleasedRe)) {
-      unreleasedLine = true;
-    }
-
     const headerMatch = line.match(headerRe);
     if (headerMatch?.groups?.name) {
-      releases.set(headerMatch.groups.name, lineNo);
-    }
-
-    const oldHeaderMatch = line.match(oldHeaderRe);
-    if (oldHeaderMatch?.groups?.name) {
-      oldFormatReleases.add(oldHeaderMatch.groups.name);
+      const name = headerMatch.groups.name;
+      if (name === "Unreleased") {
+        unreleasedLine = lineNo;
+      } else {
+        releases.set(name, lineNo);
+      }
+      return;
     }
 
     const footerMatch = line.match(footerRe);
@@ -54,10 +46,10 @@ function parseChangelog(text: string): ParseResult {
     }
   });
 
-  return { unreleasedLine, releases, oldFormatReleases, footerLinks };
+  return { unreleasedLine, releases, footerLinks };
 }
 
-export function lint(version: string, changelogFile: string): void {
+export function lint(changelogFile: string): void {
   if (!fs.existsSync(changelogFile)) {
     throw new LintError(`${path.basename(changelogFile)} not found`);
   }
@@ -72,28 +64,30 @@ export function lint(version: string, changelogFile: string): void {
     );
   }
 
-  const { unreleasedLine, releases, oldFormatReleases, footerLinks } =
-    parseChangelog(text);
+  const { unreleasedLine, releases, footerLinks } = parseChangelog(text);
+  const latestRelease = releases.entries().next().value;
 
-  if (!releases.has(version)) {
+  if (!latestRelease) {
+    throw new LintError("Changelog has no release sections");
+  }
+  const [version, releaseLine] = latestRelease;
+
+  if (unreleasedLine === null) {
+    throw new LintError("Changelog is missing an [Unreleased] section");
+  }
+
+  if (unreleasedLine > releaseLine) {
     throw new LintError(
-      `Changelog has no release section for version ${version} ` +
-        "(did you forget to run patchChangelog?)",
+      "[Unreleased] section must appear before the current release section",
     );
   }
 
-  if (unreleasedLine) {
-    throw new LintError("Unexpected 'Unreleased' section");
+  if (!footerLinks.has("Unreleased")) {
+    throw new LintError("Missing footer link for [Unreleased]");
   }
 
-  if (oldFormatReleases.size > 0) {
-    throw new LintError(
-      `Unexpected releases using the old format (${oldFormatReleases.size})`,
-    );
-  }
-
-  if (footerLinks.size > 0) {
-    throw new LintError(`Unexpected footer links (${footerLinks.size})`);
+  if (!footerLinks.has(version)) {
+    throw new LintError(`Missing footer link for version ${version}`);
   }
 
   console.log(`Changelog OK for version ${version}`);
@@ -101,17 +95,10 @@ export function lint(version: string, changelogFile: string): void {
 
 export function main(): void {
   try {
-    const version = readVersion();
-    lint(version, CHANGELOG_FILE);
+    lint(CHANGELOG_FILE);
   } catch (e) {
     if (e instanceof LintError) {
       console.error("Changelog lint failed:\n");
-      console.error(`- ${e.message}`);
-      process.exit(1);
-    }
-
-    if (e instanceof MetadataError) {
-      console.error("Changelog lint failed to read metadata:\n");
       console.error(`- ${e.message}`);
       process.exit(1);
     }
