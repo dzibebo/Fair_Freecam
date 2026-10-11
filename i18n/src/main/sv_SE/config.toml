@@ -2,7 +2,7 @@
 title = "Fair Freecam-inställningar"
 
   [freecam.config.gui.fallback]
-  title = "KonfigurationsGUI är inte tillgängligt."
+  title = "Konfigurationsmeny ej tillgänglig."
 
 [freecam.config.controls]
 label = "Nyckelbindningar"
