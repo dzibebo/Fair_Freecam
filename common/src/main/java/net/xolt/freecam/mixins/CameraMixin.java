@@ -50,10 +50,11 @@ public class CameraMixin {
     }
     *///? }
 
-    // Removes the submersion overlay when underwater, in lava, or powdered snow.
-    @Inject(method = "getFluidInCamera", at = @At("HEAD"), cancellable = true)
+    // In Fair Freecam, preserves normal blue water fog and appearance.
+    // Removes the submersion overlay only for lava or powdered snow if configured.
+    @Inject(method = "getFluidInCamera", at = @At("RETURN"), cancellable = true)
     public void onGetSubmersionType(CallbackInfoReturnable<FogType> cir) {
-        if (Freecam.isEnabled() && ModConfig.get().shouldHideSubmersionFog()) {
+        if (Freecam.isEnabled() && ModConfig.get().shouldHideSubmersionFog() && cir.getReturnValue() != FogType.WATER) {
             cir.setReturnValue(FogType.NONE);
         }
     }

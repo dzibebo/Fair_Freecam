@@ -50,7 +50,7 @@ public class ModConfigDTO implements RawJsonHolder {
         public boolean showPlayer = true;
         public boolean showHand = false;
         public boolean fullBright = false;
-        public boolean showSubmersion = false;
+        public boolean showSubmersion = true;
         public boolean outlinePlayer = false;
     }
 
